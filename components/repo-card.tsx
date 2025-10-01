@@ -135,7 +135,11 @@ export function RepoCard({ repository }: RepoCardProps) {
 
         setProgress(100);
 
-        const blob = new Blob(chunks);
+        // Convert all Uint8Array chunks to ArrayBuffer for Blob constructor, filter out SharedArrayBuffer
+        const buffers = chunks
+          .map(chunk => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+          .filter((buf): buf is ArrayBuffer => buf instanceof ArrayBuffer);
+        const blob = new Blob(buffers);
         const objectUrl = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = objectUrl;
