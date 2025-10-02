@@ -147,7 +147,7 @@ export function RepoCard({ repository }: RepoCardProps) {
 
         {/* Close button (Lucide) */}
         <button
-          onClick={() => toast.dismiss(t.id)} // ✅ FIXED
+          onClick={() => toast.dismiss()}
           className="absolute top-3 right-3 text-gray-300 hover:text-white transition-colors cursor-pointer p-1 rounded-full hover:bg-white/10"
         >
           <X className="w-4 h-4" strokeWidth={2.2} />
