@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import { motion } from "framer-motion";
@@ -8,7 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Repository } from "@/app/page";
 import { useState, useRef, useEffect } from "react";
-import Image from "next/image";
+import { toast } from "sonner";
+import { X } from "lucide-react";
 
 interface RepoCardProps {
   repository: Repository;
@@ -96,6 +96,65 @@ export function RepoCard({ repository }: RepoCardProps) {
   }, [repository.html_url]);
 
   const handleDownload = async () => {
+    toast.custom((t) => (
+      <motion.div
+        initial={{ opacity: 0, y: 25, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: -20, scale: 0.9 }}
+        transition={{ type: "spring", stiffness: 220, damping: 18 }}
+        className="relative w-[340px] rounded-2xl backdrop-blur-xl border border-white/20 shadow-xl p-4 flex gap-3 items-start overflow-hidden cursor-default"
+        style={{
+          background:
+            "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(16,185,129,0.18))",
+        }}
+      >
+        {/* Emerald glow */}
+        <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-emerald-400/40 blur-3xl opacity-70 pointer-events-none" />
+
+        {/* Left accent bar */}
+        <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-2xl" />
+
+        {/* Icon */}
+        <div className="flex-shrink-0 relative z-10">
+          <div className="w-11 h-11 flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 shadow-inner">
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={2}
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7 10v4h10v-4m-5-6v10m-7 4h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        </div>
+
+        {/* Text */}
+        <div className="flex flex-col flex-1 relative z-10">
+          <h4 className="text-sm font-semibold text-white tracking-tight drop-shadow-md">
+            Downloading {repository.name}
+          </h4>
+          <p className="text-xs text-gray-200 mt-0.5 leading-snug">
+            Fetching{" "}
+            <span className="font-bold text-emerald-400">{selectedBranch}</span>{" "}
+            branch for you. Sit tight 🚀
+          </p>
+        </div>
+
+        {/* Close button (Lucide) */}
+        <button
+          onClick={() => toast.dismiss(t.id)} // ✅ FIXED
+          className="absolute top-3 right-3 text-gray-300 hover:text-white transition-colors cursor-pointer p-1 rounded-full hover:bg-white/10"
+        >
+          <X className="w-4 h-4" strokeWidth={2.2} />
+        </button>
+      </motion.div>
+    ));
+
     try {
       setDownloading(true);
       setProgress(0);
@@ -137,7 +196,12 @@ export function RepoCard({ repository }: RepoCardProps) {
 
         // Convert all Uint8Array chunks to ArrayBuffer for Blob constructor, filter out SharedArrayBuffer
         const buffers = chunks
-          .map(chunk => chunk.buffer.slice(chunk.byteOffset, chunk.byteOffset + chunk.byteLength))
+          .map((chunk) =>
+            chunk.buffer.slice(
+              chunk.byteOffset,
+              chunk.byteOffset + chunk.byteLength
+            )
+          )
           .filter((buf): buf is ArrayBuffer => buf instanceof ArrayBuffer);
         const blob = new Blob(buffers);
         const objectUrl = URL.createObjectURL(blob);
@@ -416,8 +480,8 @@ export function RepoCard({ repository }: RepoCardProps) {
                             {indeterminate
                               ? "Downloading..."
                               : progress > 0
-                              ? `${progress}%`
-                              : "Preparing..."}
+                                ? `${progress}%`
+                                : "Preparing..."}
                           </span>
                         </>
                       ) : (

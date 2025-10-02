@@ -2,6 +2,7 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { Suspense } from "react";
+import { Toaster } from "sonner";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -58,12 +59,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`antialiased`}
-    >
+    <html lang="en" className={`antialiased`}>
       <body className="font-sans">
         <Suspense fallback={<div>Loading...</div>}>
+          <Toaster position="bottom-left" richColors />
           {children}
           <Analytics />
         </Suspense>
