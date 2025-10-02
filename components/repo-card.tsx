@@ -9,6 +9,8 @@ import type { Repository } from "@/app/page";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
 import { X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { motion, useMotionValue, useTransform } from "framer-motion";
 
 interface RepoCardProps {
   repository: Repository;
@@ -96,64 +98,105 @@ export function RepoCard({ repository }: RepoCardProps) {
   }, [repository.html_url]);
 
   const handleDownload = async () => {
-    toast.custom((t) => (
-      <motion.div
-        initial={{ opacity: 0, y: 25, scale: 0.95 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: -20, scale: 0.9 }}
-        transition={{ type: "spring", stiffness: 220, damping: 18 }}
-        className="relative w-[340px] rounded-2xl backdrop-blur-xl border border-white/20 shadow-xl p-4 flex gap-3 items-start overflow-hidden cursor-default"
-        style={{
-          background:
-            "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(16,185,129,0.18))",
-        }}
+// Duration in seconds
+const TOAST_DURATION = 5;
+
+toast.custom((t) => {
+  const [timeLeft, setTimeLeft] = useState(TOAST_DURATION);
+  const x = useMotionValue(0);
+  const opacity = useTransform(x, [-150, 0, 150], [0, 1, 0]);
+
+  // Countdown logic
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      toast.dismiss(t.id);
+      return;
+    }
+    const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [timeLeft]);
+
+  return (
+    <motion.div
+      drag="x"
+      dragConstraints={{ left: 0, right: 0 }}
+      style={{ x, opacity }}
+      dragElastic={0.5}
+      onDragEnd={(_, info) => {
+        if (Math.abs(info.offset.x) > 100) {
+          toast.dismiss(t.id); // swipe dismiss
+        }
+      }}
+      initial={{ opacity: 0, y: 25, scale: 0.95 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -20, scale: 0.9 }}
+      transition={{ type: "spring", stiffness: 220, damping: 18 }}
+      className="relative w-[340px] rounded-2xl backdrop-blur-xl border border-white/20 shadow-xl p-4 flex gap-3 items-start overflow-hidden cursor-default"
+      style={{
+        background:
+          "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(16,185,129,0.18))",
+      }}
+    >
+      {/* Emerald glow */}
+      <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-emerald-400/40 blur-3xl opacity-70 pointer-events-none" />
+
+      {/* Left accent bar */}
+      <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-2xl" />
+
+      {/* Icon */}
+      <div className="flex-shrink-0 relative z-10">
+        <div className="w-11 h-11 flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 shadow-inner">
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={2}
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M7 10v4h10v-4m-5-6v10m-7 4h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z"
+            />
+          </svg>
+        </div>
+      </div>
+
+      {/* Text */}
+      <div className="flex flex-col flex-1 relative z-10">
+        <h4 className="text-sm font-semibold text-white tracking-tight drop-shadow-md">
+          Downloading {repository.name}
+        </h4>
+        <p className="text-xs text-gray-200 mt-0.5 leading-snug">
+          Fetching{" "}
+          <span className="font-bold text-emerald-400">{selectedBranch}</span>{" "}
+          branch. Sit tight 🚀
+        </p>
+
+        {/* Progress bar + countdown */}
+        <div className="mt-2 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
+          <motion.div
+            className="h-full bg-emerald-400"
+            initial={{ width: "100%" }}
+            animate={{ width: `${(timeLeft / TOAST_DURATION) * 100}%` }}
+            transition={{ duration: 1, ease: "linear" }}
+          />
+        </div>
+        <span className="text-[10px] text-gray-300 mt-1">
+          Closing in {timeLeft}s
+        </span>
+      </div>
+
+      {/* Close button (Lucide) */}
+      <button
+        onClick={() => toast.dismiss(t.id)}
+        className="absolute top-3 right-3 text-gray-300 hover:text-white transition-colors cursor-pointer p-1 rounded-full hover:bg-white/10"
       >
-        {/* Emerald glow */}
-        <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-emerald-400/40 blur-3xl opacity-70 pointer-events-none" />
-
-        {/* Left accent bar */}
-        <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-2xl" />
-
-        {/* Icon */}
-        <div className="flex-shrink-0 relative z-10">
-          <div className="w-11 h-11 flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 shadow-inner">
-            <svg
-              className="w-6 h-6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M7 10v4h10v-4m-5-6v10m-7 4h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z"
-              />
-            </svg>
-          </div>
-        </div>
-
-        {/* Text */}
-        <div className="flex flex-col flex-1 relative z-10">
-          <h4 className="text-sm font-semibold text-white tracking-tight drop-shadow-md">
-            Downloading {repository.name}
-          </h4>
-          <p className="text-xs text-gray-200 mt-0.5 leading-snug">
-            Fetching{" "}
-            <span className="font-bold text-emerald-400">{selectedBranch}</span>{" "}
-            branch for you. Sit tight 🚀
-          </p>
-        </div>
-
-        {/* Close button (Lucide) */}
-        <button
-          onClick={() => toast.dismiss()}
-          className="absolute top-3 right-3 text-gray-300 hover:text-white transition-colors cursor-pointer p-1 rounded-full hover:bg-white/10"
-        >
-          <X className="w-4 h-4" strokeWidth={2.2} />
-        </button>
-      </motion.div>
-    ));
+        <X className="w-4 h-4" strokeWidth={2.2} />
+      </button>
+    </motion.div>
+  );
+});
 
     try {
       setDownloading(true);
