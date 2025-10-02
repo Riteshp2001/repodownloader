@@ -32,7 +32,7 @@ export function ThemeToggle() {
 
   return (
     <motion.div
-      className="fixed bottom-6 right-10 z-50"
+      className="fixed bottom-6 left-10 z-50"
       initial={{ opacity: 0, scale: 0.8 }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.3, delay: 0.5 }}

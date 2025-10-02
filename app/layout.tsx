@@ -62,7 +62,7 @@ export default function RootLayout({
     <html lang="en" className={`antialiased`}>
       <body className="font-sans">
         <Suspense fallback={<div>Loading...</div>}>
-          <Toaster position="bottom-left" richColors />
+          <Toaster position="bottom-right" richColors />
           {children}
           <Analytics />
         </Suspense>

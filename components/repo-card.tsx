@@ -8,9 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import type { Repository } from "@/app/page";
 import { useState, useRef, useEffect } from "react";
 import { toast } from "sonner";
-import { X } from "lucide-react";
-import { useEffect, useState } from "react";
-import { motion, useMotionValue, useTransform } from "framer-motion";
+import { Sonner } from "@/components/sonner-card";
 
 interface RepoCardProps {
   repository: Repository;
@@ -25,7 +23,7 @@ export function RepoCard({ repository }: RepoCardProps) {
   const [branchesLoading, setBranchesLoading] = useState(false);
   const progressRef = useRef<HTMLButtonElement>(null);
 
-  // Fetch branches when card mounts
+  // Fetch branches + default branch when card mounts
   useEffect(() => {
     let ignore = false;
     async function fetchAllBranches(
@@ -38,11 +36,9 @@ export function RepoCard({ repository }: RepoCardProps) {
       const link = res.headers.get("link");
       let nextUrl = null;
       if (link) {
-        // Parse GitHub API pagination link header
         const match = link.match(/<([^>]+)>; rel="next"/);
         if (match) nextUrl = match[1];
       } else if (data.length === 100) {
-        // If no link header but 100 branches, try to fetch more using 'since' param
         const last = data[data.length - 1]?.name;
         if (last) {
           const u = new URL(url);
@@ -56,28 +52,44 @@ export function RepoCard({ repository }: RepoCardProps) {
       }
       return names;
     }
+
     async function fetchBranches() {
       setBranchesLoading(true);
       try {
         const repoUrl = repository.html_url.replace(/\.git$/, "");
-        let apiUrl =
-          repoUrl.replace(
-            "https://github.com/",
-            "https://api.github.com/repos/"
-          ) + "/branches?per_page=100";
+        const apiBase = repoUrl.replace(
+          "https://github.com/",
+          "https://api.github.com/repos/"
+        );
+        let apiUrl = `${apiBase}/branches?per_page=100`;
+
         let allBranches = await fetchAllBranches(apiUrl);
-        // fallback: try without per_page param if only main is returned
         if (allBranches.length <= 1) {
-          apiUrl =
-            repoUrl.replace(
-              "https://github.com/",
-              "https://api.github.com/repos/"
-            ) + "/branches";
+          apiUrl = `${apiBase}/branches`;
           allBranches = await fetchAllBranches(apiUrl);
         }
+
+        // fetch default branch
+        let defaultBranch = "main";
+        try {
+          const repoRes = await fetch(apiBase);
+          if (repoRes.ok) {
+            const repoData = await repoRes.json();
+            if (repoData.default_branch)
+              defaultBranch = repoData.default_branch;
+          }
+        } catch {
+          defaultBranch = "main";
+        }
+
         if (!ignore && allBranches.length > 0) {
-          setBranches(allBranches);
-          setSelectedBranch(allBranches[0]);
+          // put default branch first
+          const ordered = [
+            defaultBranch,
+            ...allBranches.filter((b) => b !== defaultBranch),
+          ];
+          setBranches(ordered);
+          setSelectedBranch(defaultBranch);
         } else if (!ignore) {
           setBranches(["main"]);
           setSelectedBranch("main");
@@ -98,105 +110,13 @@ export function RepoCard({ repository }: RepoCardProps) {
   }, [repository.html_url]);
 
   const handleDownload = async () => {
-// Duration in seconds
-const TOAST_DURATION = 5;
-
-toast.custom((t) => {
-  const [timeLeft, setTimeLeft] = useState(TOAST_DURATION);
-  const x = useMotionValue(0);
-  const opacity = useTransform(x, [-150, 0, 150], [0, 1, 0]);
-
-  // Countdown logic
-  useEffect(() => {
-    if (timeLeft <= 0) {
-      toast.dismiss(t.id);
-      return;
-    }
-    const timer = setTimeout(() => setTimeLeft((prev) => prev - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [timeLeft]);
-
-  return (
-    <motion.div
-      drag="x"
-      dragConstraints={{ left: 0, right: 0 }}
-      style={{ x, opacity }}
-      dragElastic={0.5}
-      onDragEnd={(_, info) => {
-        if (Math.abs(info.offset.x) > 100) {
-          toast.dismiss(t.id); // swipe dismiss
-        }
-      }}
-      initial={{ opacity: 0, y: 25, scale: 0.95 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, y: -20, scale: 0.9 }}
-      transition={{ type: "spring", stiffness: 220, damping: 18 }}
-      className="relative w-[340px] rounded-2xl backdrop-blur-xl border border-white/20 shadow-xl p-4 flex gap-3 items-start overflow-hidden cursor-default"
-      style={{
-        background:
-          "linear-gradient(135deg, rgba(255,255,255,0.12), rgba(16,185,129,0.18))",
-      }}
-    >
-      {/* Emerald glow */}
-      <div className="absolute -bottom-8 -right-8 w-32 h-32 rounded-full bg-emerald-400/40 blur-3xl opacity-70 pointer-events-none" />
-
-      {/* Left accent bar */}
-      <div className="absolute left-0 top-0 h-full w-1.5 bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-2xl" />
-
-      {/* Icon */}
-      <div className="flex-shrink-0 relative z-10">
-        <div className="w-11 h-11 flex items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400 shadow-inner">
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={2}
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M7 10v4h10v-4m-5-6v10m-7 4h14a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2z"
-            />
-          </svg>
-        </div>
-      </div>
-
-      {/* Text */}
-      <div className="flex flex-col flex-1 relative z-10">
-        <h4 className="text-sm font-semibold text-white tracking-tight drop-shadow-md">
-          Downloading {repository.name}
-        </h4>
-        <p className="text-xs text-gray-200 mt-0.5 leading-snug">
-          Fetching{" "}
-          <span className="font-bold text-emerald-400">{selectedBranch}</span>{" "}
-          branch. Sit tight 🚀
-        </p>
-
-        {/* Progress bar + countdown */}
-        <div className="mt-2 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
-          <motion.div
-            className="h-full bg-emerald-400"
-            initial={{ width: "100%" }}
-            animate={{ width: `${(timeLeft / TOAST_DURATION) * 100}%` }}
-            transition={{ duration: 1, ease: "linear" }}
-          />
-        </div>
-        <span className="text-[10px] text-gray-300 mt-1">
-          Closing in {timeLeft}s
-        </span>
-      </div>
-
-      {/* Close button (Lucide) */}
-      <button
-        onClick={() => toast.dismiss(t.id)}
-        className="absolute top-3 right-3 text-gray-300 hover:text-white transition-colors cursor-pointer p-1 rounded-full hover:bg-white/10"
-      >
-        <X className="w-4 h-4" strokeWidth={2.2} />
-      </button>
-    </motion.div>
-  );
-});
+    toast.custom((t) => (
+      <Sonner
+        t={t}
+        repoName={repository.name}
+        branch={selectedBranch}
+      />
+    ));
 
     try {
       setDownloading(true);
@@ -210,9 +130,7 @@ toast.custom((t) => {
       )}&branch=${encodeURIComponent(selectedBranch || "main")}`;
 
       const res = await fetch(apiUrl, { method: "GET" });
-      if (!res.ok) {
-        throw new Error(`Download failed with status ${res.status}`);
-      }
+      if (!res.ok) throw new Error(`Download failed with status ${res.status}`);
 
       const contentLength = res.headers.get("Content-Length");
       if (res.body && contentLength && parseInt(contentLength, 10) > 0) {
@@ -229,15 +147,10 @@ toast.custom((t) => {
             chunks.push(value);
             loaded += value.length;
             setProgress(Math.min(100, Math.round((loaded / total) * 100)));
-
-            // allow React to paint between chunks
             await new Promise(requestAnimationFrame);
           }
         }
-
         setProgress(100);
-
-        // Convert all Uint8Array chunks to ArrayBuffer for Blob constructor, filter out SharedArrayBuffer
         const buffers = chunks
           .map((chunk) =>
             chunk.buffer.slice(
@@ -251,13 +164,11 @@ toast.custom((t) => {
         const a = document.createElement("a");
         a.href = objectUrl;
         a.download = `${repository.name}.zip`;
-        a.style.display = "none";
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
       } else {
-        // fallback if no content-length
         setIndeterminate(true);
         const blob = await res.blob();
         setProgress(100);
@@ -265,13 +176,12 @@ toast.custom((t) => {
         const a = document.createElement("a");
         a.href = objectUrl;
         a.download = `${repository.name}.zip`;
-        a.style.display = "none";
         document.body.appendChild(a);
         a.click();
         a.remove();
         setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
       }
-    } catch (error) {
+    } catch {
       const repoUrl = repository.html_url.replace(/\.git$/, "");
       const fallback = `${repoUrl}/archive/refs/heads/main.zip`;
       window.open(fallback, "_blank", "noopener,noreferrer");
@@ -280,31 +190,47 @@ toast.custom((t) => {
         setDownloading(false);
         setProgress(0);
         setIndeterminate(false);
-      }, 1500); // delay reset so user sees 100%
+      }, 1500);
     }
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
       day: "numeric",
     });
-  };
 
-  const getLanguageColor = (language: string | null) => {
-    const colors: Record<string, string> = {
-      JavaScript: "bg-yellow-500",
-      TypeScript: "bg-blue-500",
-      Python: "bg-green-500",
-      Java: "bg-red-500",
-      "C++": "bg-purple-500",
-      Go: "bg-cyan-500",
-      Rust: "bg-orange-500",
-      PHP: "bg-indigo-500",
-    };
-    return colors[language || ""] || "bg-gray-500";
-  };
+const getLanguageColor = (language: string | null) => {
+  const colors: Record<string, string> = {
+    JavaScript: "bg-yellow-500",
+    TypeScript: "bg-blue-500",
+    Python: "bg-green-500",
+    Java: "bg-red-500",
+    "C++": "bg-purple-500",
+    C: "bg-gray-700",
+    "C#": "bg-teal-500",
+    Go: "bg-cyan-500",
+    Rust: "bg-orange-500",
+    PHP: "bg-indigo-500",
+    Ruby: "bg-pink-500",
+    Swift: "bg-orange-400",
+    Kotlin: "bg-violet-500",
+    Dart: "bg-sky-500",
+    Scala: "bg-red-400",
+    Haskell: "bg-purple-700",
+    Elixir: "bg-fuchsia-600",
+    Shell: "bg-green-700",
+    PowerShell: "bg-blue-700",
+    R: "bg-sky-400",
+    MATLAB: "bg-yellow-600",
+    Julia: "bg-purple-400",
+    "Objective-C": "bg-gray-600",
+  }
+
+  return colors[language || ""] || "bg-gray-500";
+};
+
 
   return (
     <motion.div
